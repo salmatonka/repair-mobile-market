@@ -1,0 +1,26 @@
+[
+    {
+        "category": "iPhone",
+        "name": "iPhone"
+    },
+    {
+        "category": "samsung",
+        "name": "Samsung"
+    },
+    {
+        "category": "nokia",
+        "name": "Nokia"
+    },
+    {
+        "category": "realMi",
+        "name": "RealMi"
+    },
+    {
+        "category": "vivo",
+        "name": "Vivo"
+    },
+    {
+        "category": "walton",
+        "name": "Walton"
+    } 
+]
