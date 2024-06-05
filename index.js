@@ -42,14 +42,7 @@ async function run() {
       res.send(result)
     });
 
-    //add new product in usedProductCollection
-    //   app.post('/usedMobiles', async(req, res) => {
-    //     const product = req.body;
-    //     const result = await usedMobileCollection.insertOne(product);
-    //     // console.log(result)
-    //     res.send(result)
-    // })
-
+  
     // all mobile Category
     app.get('/usedMobile', async (req, res) => {
       const query = {};
@@ -195,28 +188,17 @@ app.delete('/myproduct',async(req,res)=>{
   res.send(result)
 })
 
-app.put('/myproduct', async(req, res) => {
-  const id = req.query.id;
-  const filter = {_id: new ObjectId(id)};
-  const options = {upsert: true};
-  const updatedDoc = {
-  $set: {
-    advertising: true
-  }
-}
-const result = await usedMobileCollection.updateOne(filter, updatedDoc, options)
-res.send(result)
-})
-
-
-//filter items for advertising 
-
-app.get('/advertisingProduct', async(req, res) => {
-  const query = {};
-  const mobiles = await usedMobileCollection.find(query).toArray();
-  const advertising = mobiles.filter(mobile => mobile?.advertising === true) 
-  res.send(advertising)
+app.patch("/myProduct/:email", async (req, res) => {
+  const email= req.params.email;
+  const userData = req.body;
+  const result = await usedMobileCollection.updateOne(
+    { email},
+    { $set: userData },
+    { upsert: true }
+  );
+  res.send(result);
 });
+
 
 
 
