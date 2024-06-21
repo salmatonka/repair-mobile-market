@@ -1,23 +1,24 @@
-require("dotenv").config();
-const express = require("express");
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const express = require('express');
+const cors = require('cors');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 
+const ObjectId = require('mongodb').ObjectId;
+
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 const app = express();
+
 const port = process.env.PORT || 5000;
 
-const cors = require("cors");
-
+//middleware
 app.use(cors());
 app.use(express.json());
 
 
+//mongodb
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ycofkd3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ycofkd3.mongodb.net/?retryWrites=true&w=majority`;
-// console.log(uri)
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -26,12 +27,49 @@ const client = new MongoClient(uri, {
   }
 });
 
+// token function
+
+// middleware function for jwt verify 
+const verifyJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, process.env.TOKEN_SECRET, function (error, decoded) {
+    if (error) {
+      return res.status(403).send({ message: 'Forbidden' });
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
+
+
+
+//mongodb function
 async function run() {
   try {
     const mobileCategoryCollection = client.db('mobileMarketUser').collection('mobileCategory');
     const usedMobileCollection = client.db('mobileMarketUser').collection('allUsedPhone');
     const bookingsCollection = client.db('mobileMarketUser').collection('bookings');
     const usersCollection = client.db('mobileMarketUser').collection('users');
+    const cartCollection = client.db('mobileMarketUser').collection('carts');
+
+    // Get jwt token 
+    app.get('/jwt', async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+
+      if (user && user.email) {
+        const token = jwt.sign({ email }, process.env.TOKEN_SECRET, { expiresIn: '12d' });
+        return res.send({ accessToken: token })
+      }
+      // console.log(user);
+      res.status(403).send({ accessToken: '' });
+    })
+
 
 
     // mobileCategory
@@ -42,7 +80,7 @@ async function run() {
       res.send(result)
     });
 
-  
+
     // all mobile Category
     app.get('/usedMobile', async (req, res) => {
       const query = {};
@@ -67,139 +105,150 @@ async function run() {
       res.send(result);
     })
 
-    app.put('/usedMobile', async(req, res) => {
-      const id = req.query.id;
-      const filter = {_id: new ObjectId(id)};
-      const options = {upsert: true};
-      const updatedDoc = {
-      $set: {
-        report: true
-      }
-    }
-    const result = await usedMobileCollection.updateOne(filter, updatedDoc, options)
-    res.send(result)
-  });
-
-  app.get('/allReported', async(req, res) => {
-    const report = req.query.report;
-    const query = {report: true};
-    const result = await usedMobileCollection.find(query).toArray();
-    res.send(result)
-})
 
 
-    app.post('/users',async(req,res)=>{
+
+
+
+    // Creating user in dB 
+    app.post('/users', async (req, res) => {
       const user = req.body;
-      const result = await usersCollection.insertOne(user)
-      res.send(result)
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
     })
-    app.get('/users', async(req,res)=>{
-      const query = {}
-      const result = await usersCollection.find(query).toArray()
-      res.send(result)
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+    // Getting Sellers for admin 
+    app.get('/users/sellers', async (req, res) => {
+      const query = { role: 'seller' };
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
     })
-    app.put('/users',async(req, res)=>{
+
+    // Getting Buyers for admin 
+    app.get('/users/buyers', async (req, res) => {
+      const query = { role: 'buyer' };
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    })
+
+    // Blue tick handling
+    app.put('/users', async (req, res) => {
       const id = req.query.id;
-      const filter = {_id: new ObjectId(id)};
-            const options = {upsert: true};
-            const updatedDoc = {
-            $set: {
-              verified: true
-            }
-          }
-          const result = await usersCollection.updateOne(filter, updatedDoc, options)
-          res.send(result)
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          verified: true
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updatedDoc, options)
+      res.send(result)
 
     })
 
-    app.get('/users/:email', async(req, res)=> {
-      const email = req.params.email;
-      const query = {email: email};
-      const result = await usersCollection.find(query).toArray();
-      res.send(email);
-    
-  });
-
-  app.delete('/users', async(req,res)=>{
-    const id = req.query.id;
-    const query = {_id: new ObjectId(id)}
-    const result = await usersCollection.deleteOne(query)
-    res.send(result);
-  })
-
-  //get admin route 
-  app.get('/users/admin/:email',async(req,res)=>{
-    const email = req.params.email;
-    const query = {email}
-    const user = await usersCollection.findOne(query)
-    res.send({isAdmin: user?.role === 'admin'});
-})
-app.get('/users/seller/:email', async(req, res) => {
-  const email = req.params.email;
-  const query =  { email };
-  const user = await usersCollection.findOne(query);
-  res.send({isSeller: user?.role === 'seller'})
-});
+    app.delete('/users', async (req, res) => {
+      const id = req.query.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await usersCollection.deleteOne(query)
+      res.send(result);
+    })
 
 
+
+    // post  cartItem
+    app.post('/carts', async (req, res) => {
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result);
+      // console.log(result)
+    });
+
+    // carts collection
+    app.get('/carts', async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
+      // console.log(result)
+    });
+
+    app.delete('/carts/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await cartCollection.deleteOne(query);
+      res.send(result);
+      // console.log(result)
+    })
 
     // add booking product 
-    app.post('/booking', async (req, res) => {
+    app.post('/bookings', async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking)
       res.send(result);
     })
-    app.get('/booking', async (req, res) => {
+    app.get('/bookings', async (req, res) => {
       const email = req.query.email;
       const query = { email: (email) }
       const bookings = await bookingsCollection.find(query).toArray()
       res.send(bookings);
+      // console.log(bookings)
 
     })
-    app.delete('/booking', async(req, res) => {
-      const id = req.query.id;
-      const query = {_id: new ObjectId(id)};
-      const result = await bookingsCollection.deleteOne(query);
+    // Deleting order 
+    app.delete('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      // console.log(id);
+      const filter = { _id: new ObjectId(id) };
+      const result = await bookingsCollection.deleteOne(filter);
+      res.send(result);
+    })
+
+
+
+    //add new product in usedProductCollection
+    app.post('/myProducts', async (req, res) => {
+      const product = req.body;
+      const result = await usedMobileCollection.insertOne(product);
+      // console.log(result)
       res.send(result)
-  })
-
-//add new product in usedProductCollection
-      app.post('/usedMobile', async(req, res) => {
-        const product = req.body;
-        const result = await usedMobileCollection.insertOne(product);
-        // console.log(result)
-        res.send(result)
+    })
+    app.get('/myProducts', async (req, res) => {
+      const products = await usedMobileCollection.find().toArray();
+      res.send(products);
+    })
+    //single mobile with unic id
+    app.get('/myProducts/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usedMobileCollection.findOne(query);
+      res.send(result);
     })
 
- //  find the seller product 
 
- app.get('/myproduct',async(req,res)=>{
-  const email = req.query.email;
-  const query = {userEmail: (email)}
-  const result = await usedMobileCollection.find(query).toArray()
-  res.send(result)
-})
+    //  find the  product delete
 
-app.delete('/myproduct',async(req,res)=>{
-  const id = req.query.id;
-  const query = {_id: new ObjectId(id)}
-  const result = await usedMobileCollection.deleteOne(query)
-  console.log(result);
-  res.send(result)
-})
+    app.delete('/myProducts/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await usedMobileCollection.deleteOne(query)
+      // console.log(result);
+      res.send(result)
+    })
 
-app.patch("/myProduct/:email", async (req, res) => {
-  const email= req.params.email;
-  const userData = req.body;
-  const result = await usedMobileCollection.updateOne(
-    { email},
-    { $set: userData },
-    { upsert: true }
-  );
-  res.send(result);
-});
+//  edit product 
 
-
+    app.patch("/myProducts/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+      const result = await usedMobileCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+      );
+      res.send(result);
+    });
 
 
   } finally {
