@@ -11,7 +11,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 //middleware
-app.use(cors({origin:'*'}));
+app.use(cors({origin:'http://localhost:5173'}));
 //middleware
 // app.use(cors({
 //   origin: ['https://6675920bff107b952a3e51d6--thunderous-smakager-3ad4c8.netlify.app'],
