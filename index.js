@@ -12,13 +12,12 @@ const port = process.env.PORT || 5000;
 
 //middleware
 const corsOptions = {
-  origin: 'https://new-mobile-client.onrender.com',
-  methods: ['GET', 'POST'],  // Specify allowed methods
-  allowedHeaders: ['Content-Type'],  // Specify allowed headers
+  origin: 'http://localhost:5173', // specify the allowed origin
+  methods: 'GET,POST,PUT,DELETE',
+  allowedHeaders: 'Content-Type,Authorization',
 };
 
-// Use CORS middleware
-app.use(cors(corsOptions));
+app.use(cors(corsOptions));;
 
 // app.use(cors({origin:'http://localhost:5173'}));
 //middleware
