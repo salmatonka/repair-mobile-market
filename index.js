@@ -11,13 +11,13 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 //middleware
-const corsOptions = {
-  origin: 'http://localhost:5173', // specify the allowed origin
-  methods: 'GET,POST,PUT,DELETE',
-  allowedHeaders: 'Content-Type,Authorization',
-};
+// const corsOptions = {
+//   origin: 'http://localhost:5173', // specify the allowed origin
+//   methods: 'GET,POST,PUT,DELETE',
+//   allowedHeaders: 'Content-Type,Authorization',
+// };
 
-app.use(cors(corsOptions));;
+app.use(cors());
 
 // app.use(cors({origin:'http://localhost:5173'}));
 //middleware
@@ -63,6 +63,7 @@ const verifyJWT = (req, res, next) => {
 //mongodb function
 async function run() {
   try {
+    await client.connect();
     const mobileCategoryCollection = client.db('mobileMarketUser').collection('mobileCategory');
     const usedMobileCollection = client.db('mobileMarketUser').collection('allUsedPhone');
     const bookingsCollection = client.db('mobileMarketUser').collection('bookings');
